@@ -83,7 +83,7 @@ jobs:
           & $python -m pip install podman-compose -t $moddir
           if ($LASTEXITCODE -ne 0) { throw "pip install podman-compose failed" }
 
-          $env:PYTHONPATH = $moddir\
+          $env:PYTHONPATH = $moddir
 
           & $python -m podman_compose --version
 
