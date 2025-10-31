@@ -102,25 +102,27 @@ jobs:
 
           # Ver contenedores
           & $podman ps
-      - name: Smoke test /DevOp
+      - name: Smoke test /DevOps vía LB
         shell: powershell
         run: |
+          # 1) Leer el secreto EXACTO que usa el stack
           $line = (Get-Content .env | Select-String '^JWT_SECRET_B64=')
           if (-not $line) { throw "Falta JWT_SECRET_B64 en .env" }
           $env:JWT_SECRET_B64 = ($line.ToString().Split('=')[1]).Trim()
-          if (-not $env:JWT_SECRET_B64) { throw "JWT_SECRET_B64 vacio" }
+          if (-not $env:JWT_SECRET_B64) { throw "JWT_SECRET_B64 vacío" }
 
+          # 2) Mintear JWT con el wrapper de Maven (usa el JDK de este job)
           $mvnw = "$PWD\mvnw.cmd"
           if (-not (Test-Path $mvnw)) { throw "mvnw.cmd no encontrado en $PWD" }
 
           $JWT = & $mvnw -q -Dexec.mainClass=com.diegog.devopsExercise.MintJwtRunner exec:java
-          # Asegurar string plano sin CR/LF ni espacios
-          $JWT = ($JWT -join '') -replace "`r|`n","" 
+          $JWT = ($JWT -join '') -replace "`r|`n",""   # quita CR/LF y flatea
           if ([string]::IsNullOrWhiteSpace($JWT) -or $JWT.Split('.').Count -ne 3 -or $JWT.Length -lt 100) {
-            throw "JWT invalido o vacio: '$JWT'"
+            throw "JWT inválido o vacío: '$JWT'"
           }
           Write-Host "JWT length: $($JWT.Length)"
 
+          # 3) Llamar al LB y validar 200
           $Body = '{"message":"This is a test","to":"Juan Perez","from":"Rita Asturia","timeToLifeSec":45}'
           $code = & curl.exe -s -o resp.json -w "%{http_code}" -X POST `
             -H "X-Parse-REST-API-Key: 2f5ae96c-b558-4c7b-a590-a501ae1c3f6c" `
