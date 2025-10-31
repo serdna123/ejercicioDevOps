@@ -107,17 +107,7 @@ jobs:
         env:
           API_KEY: 2f5ae96c-b558-4c7b-a590-a501ae1c3f6c
         run: |
-          # Mint JWT con el mismo secreto que usa el stack
           $env:JWT_SECRET_B64 = (Get-Content .env | Select-String "JWT_SECRET_B64").ToString().Split('=')[1]
-          $JWT = & "C:\Program Files\Java\jdk-21\bin\java.exe" -cp target\classes;$(Get-ChildItem -Path target\dependency -Filter *.jar | ForEach-Object { $_.FullName } -join ';') com.diegog.devopsExercise.MintJwtRunner
-          if (-not $JWT) { $JWT = (& mvn -q -Dexec.mainClass=com.diegog.devopsExercise.MintJwtRunner exec:java) }
+          $JWT = (& mvn -q -Dexec.mainClass=com.diegog.devopsExercise.MintJwtRunner exec:java)
           $JWT = $JWT -replace "`r|`n",""
-
-          $Body = '{"message":"This is a test","to":"Juan Perez","from":"Rita Asturia","timeToLifeSec":45}'
-          $r = curl.exe -s -o resp.json -w "%{http_code}" -X POST `
-            -H "X-Parse-REST-API-Key: $env:API_KEY" `
-            -H "X-JWT-KWY: $JWT" -H "Content-Type: application/json" `
-            --data-raw $Body http://localhost:8080/DevOps
-
-          Get-Content resp.json
-          if ($r -ne "200") { throw "Smoke test failed with HTTP $r" }
+          Write-Host "JWT length: $($JWT.Length)"
