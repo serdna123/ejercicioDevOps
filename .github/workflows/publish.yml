@@ -54,7 +54,6 @@ jobs:
       - name: Set IMAGE_TAG output
         id: meta
         run: echo "IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
-
   deploy:
     needs: build-image
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -63,7 +62,7 @@ jobs:
       IMAGE_TAG: ${{ needs.build-image.outputs.image_tag }}  
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Escribir .env para compose
         shell: powershell
         run: |
