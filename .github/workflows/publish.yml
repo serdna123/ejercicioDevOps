@@ -55,37 +55,37 @@ jobs:
         id: meta
         run: echo "IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-deploy:
-  needs: build-image        # o build-test si no haces imagen
-  if: github.ref == 'refs/heads/main'
-  runs-on: [self-hosted, Windows, X64]
+  deploy:
+    needs: build-image        # o build-test si no haces imagen
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Windows, X64]
 
-  steps:
-    - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Escribir .env con secreto y tag
-      shell: pwsh
-      run: |
-        "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
-        "IMAGE_TAG=${{ needs.build-image.outputs.meta.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env
-        Get-Content .env
+      - name: Escribir .env con secreto y tag
+        shell: pwsh
+        run: |
+          "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
+          "IMAGE_TAG=${{ needs.build-image.outputs.meta.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env
+          Get-Content .env
 
-    - name: Down/Build/Up con PowerShell
-      shell: pwsh
-      run: |
-        $python = "C:\Python311\python.exe"
-        $podman = "C:\Program Files\RedHat\Podman\podman.exe"
+      - name: Down/Build/Up con PowerShell
+        shell: pwsh
+        run: |
+          $python = "C:\Python311\python.exe"
+          $podman = "C:\Program Files\RedHat\Podman\podman.exe"
 
-        # DOWN (ignorar error si no hay stack)
-        & $python -m podman_compose down
-        if ($LASTEXITCODE -ne 0) { Write-Host "No stack to stop (continuing)"; $global:LASTEXITCODE = 0 }
+          # DOWN (ignorar error si no hay stack)
+          & $python -m podman_compose down
+          if ($LASTEXITCODE -ne 0) { Write-Host "No stack to stop (continuing)"; $global:LASTEXITCODE = 0 }
 
-        # (Si usas imagen de GHCR, ya no compiles aquí; si aún compilas local, deja este paso)
-        # & $python -m podman_compose build --no-cache
-        # if ($LASTEXITCODE -ne 0) { throw "Build failed" }
+          # (Si usas imagen de GHCR, ya no compiles aquí; si aún compilas local, deja este paso)
+          # & $python -m podman_compose build --no-cache
+          # if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
-        # UP con la config actual (usando IMAGE_TAG de .env)
-        & $python -m podman_compose up -d
-        if ($LASTEXITCODE -ne 0) { throw "Up failed" }
+          # UP con la config actual (usando IMAGE_TAG de .env)
+          & $python -m podman_compose up -d
+          if ($LASTEXITCODE -ne 0) { throw "Up failed" }
 
-        & $podman ps
+          & $podman ps
