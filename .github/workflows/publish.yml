@@ -74,8 +74,8 @@ jobs:
         shell: powershell
         run: |
           $podman = "C:\Program Files\RedHat\Podman\podman.exe"
-          & $podman login ghcr.io --username $env:GITHUBACTOR --password $env:GITHUB_TOKEN
+          & $podman login ghcr.io --username $env:${{ github.actor }} --password $env:${{ secrets.DEVOPS_PWD }}
           & $podman pull $env:IMAGE_TAG
-          & $podman compose down
+          & $podman-compose down
           if ($LASTEXITCODE -ne 0) { Write-Host "no stack to stop"; $LASTEXITCODE = 0 }
-          & $podman compose up -d
+          & $podman-compose up -d
