@@ -64,14 +64,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Escribir .env con secreto y tag
-        shell: pwsh
+        shell: powershell
         run: |
           "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
           "IMAGE_TAG=${{ needs.build-image.outputs.meta.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env
           Get-Content .env
 
       - name: Down/Build/Up con PowerShell
-        shell: pwsh
+        shell: powershell
         run: |
           $python = "C:\Python311\python.exe"
           $podman = "C:\Program Files\RedHat\Podman\podman.exe"
