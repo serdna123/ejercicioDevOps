@@ -27,11 +27,11 @@ jobs:
   build-image:
     needs: build-test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    permissions: { contents: read, packages: write }
     env:
       IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/devops-exercise
+    outputs:
+      image_tag: ${{ steps.meta.outputs.IMAGE_TAG }}   
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -56,26 +56,50 @@ jobs:
         run: echo "IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
   deploy:
-    needs: build-image        # o build-test si no haces imagen
-    if: github.ref == 'refs/heads/main'
+    needs: build-image
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: [self-hosted, Windows, X64]
-
+    env:
+      IMAGE_TAG: ${{ needs.build-image.outputs.image_tag }}  
     steps:
       - uses: actions/checkout@v4
-
-      - name: Escribir .env con secreto y tag
+      
+      - name: Escribir .env para compose
         shell: powershell
         run: |
           "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
-          "IMAGE_TAG=${{ needs.build-image.outputs.meta.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env
+          "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env
           Get-Content .env
 
-      - name: Compose con podman
+      - name: Instalar podman-compose en carpeta temporal y usarlo
         shell: powershell
         run: |
+          $python = "C:\Python311\python.exe"
           $podman = "C:\Program Files\RedHat\Podman\podman.exe"
-          & $podman login ghcr.io --username $env:${{ github.actor }} --password $env:${{ secrets.DEVOPS_PWD }}
+          $moddir = "$env:RUNNER_TEMP\pdc"
+
+          & $python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed" }
+
+          & $python -m pip install podman-compose -t $moddir
+          if ($LASTEXITCODE -ne 0) { throw "pip install podman-compose failed" }
+
+          $env:PYTHONPATH = $moddir
+
+          # (Opcional) ver versión
+          & $python -m podman_compose --version
+
+          # Pull explícito de la imagen versionada de GHCR
           & $podman pull $env:IMAGE_TAG
-          & $podman-compose down
+          if ($LASTEXITCODE -ne 0) { throw "podman pull failed" }
+
+          # DOWN (ignora error si no hay stack)
+          & $python -m podman_compose down
           if ($LASTEXITCODE -ne 0) { Write-Host "no stack to stop"; $LASTEXITCODE = 0 }
-          & $podman-compose up -d
+
+          # UP con .env (usa IMAGE_TAG y JWT_SECRET_B64)
+          & $python -m podman_compose up -d
+          if ($LASTEXITCODE -ne 0) { throw "compose up failed" }
+
+          # Ver contenedores
+          & $podman ps
