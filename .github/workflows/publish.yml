@@ -39,16 +39,6 @@ jobs:
         id: meta
         run: echo "IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-  deploy:
-    needs: build-image
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    runs-on: [self-hosted, Windows, X64]
-    env:
-      IMAGE_TAG: ${{ needs.build-image.outputs.image_tag }}   # <-- ahora sí llega el tag
-    steps:
-      - uses: actions/checkout@v4
-      # (sigue abajo con el Arreglo 2)
-
 
   deploy:
     needs: build-image        # o build-test si no haces imagen
