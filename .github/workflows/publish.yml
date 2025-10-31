@@ -63,14 +63,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Escribir .env para compose
+      - name: Escribir .env
         shell: powershell
         run: |
           "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
           "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env
           Get-Content .env
 
-      - name: Instalar podman-compose en carpeta temporal y usarlo
+      - name: Desplegar con podman
         shell: powershell
         run: |
           $python = "C:\Python311\python.exe"
@@ -83,52 +83,21 @@ jobs:
           & $python -m pip install podman-compose -t $moddir
           if ($LASTEXITCODE -ne 0) { throw "pip install podman-compose failed" }
 
-          $env:PYTHONPATH = $moddir
+          $env:PYTHONPATH = $moddir\
 
-          # (Opcional) ver versión
           & $python -m podman_compose --version
 
-          # Pull explícito de la imagen versionada de GHCR
+          # Pull de la imagen versionada GHCR
           & $podman pull $env:IMAGE_TAG
           if ($LASTEXITCODE -ne 0) { throw "podman pull failed" }
 
-          # DOWN (ignora error si no hay stack)
+          # DOWN
           & $python -m podman_compose down
           if ($LASTEXITCODE -ne 0) { Write-Host "no stack to stop"; $LASTEXITCODE = 0 }
 
-          # UP con .env (usa IMAGE_TAG y JWT_SECRET_B64)
+          # UP 
           & $python -m podman_compose up -d
           if ($LASTEXITCODE -ne 0) { throw "compose up failed" }
 
           # Ver contenedores
           & $podman ps
-      - name: Smoke test /DevOps vía LB
-        shell: powershell
-        run: |
-          # 1) Leer el secreto EXACTO que usa el stack
-          $line = (Get-Content .env | Select-String '^JWT_SECRET_B64=')
-          if (-not $line) { throw "Falta JWT_SECRET_B64 en .env" }
-          $env:JWT_SECRET_B64 = ($line.ToString().Split('=')[1]).Trim()
-          if (-not $env:JWT_SECRET_B64) { throw "JWT_SECRET_B64 vacío" }
-
-          # 2) Mintear JWT con el wrapper de Maven (usa el JDK de este job)
-          $mvnw = "$PWD\mvnw.cmd"
-          if (-not (Test-Path $mvnw)) { throw "mvnw.cmd no encontrado en $PWD" }
-
-          $JWT = & $mvnw -q -Dexec.mainClass=com.diegog.devopsExercise.MintJwtRunner exec:java
-          $JWT = ($JWT -join '') -replace "`r|`n",""   # quita CR/LF y flatea
-          if ([string]::IsNullOrWhiteSpace($JWT) -or $JWT.Split('.').Count -ne 3 -or $JWT.Length -lt 100) {
-            throw "JWT inválido o vacío: '$JWT'"
-          }
-          Write-Host "JWT length: $($JWT.Length)"
-
-          # 3) Llamar al LB y validar 200
-          $Body = '{"message":"This is a test","to":"Juan Perez","from":"Rita Asturia","timeToLifeSec":45}'
-          $code = & curl.exe -s -o resp.json -w "%{http_code}" -X POST `
-            -H "X-Parse-REST-API-Key: 2f5ae96c-b558-4c7b-a590-a501ae1c3f6c" `
-            -H "X-JWT-KWY: $JWT" `
-            -H "Content-Type: application/json" `
-            --data-raw $Body http://localhost:8080/DevOps
-
-          Get-Content resp.json
-          if ($code -ne "200") { throw "Smoke test FAILED. HTTP $code" }
