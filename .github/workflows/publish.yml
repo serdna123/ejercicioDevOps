@@ -103,7 +103,7 @@ jobs:
           # Ver contenedores
           & $podman ps
       - name: Smoke test /DevOp
-        shell: pwsh
+        shell: powershell
         run: |
           $line = (Get-Content .env | Select-String '^JWT_SECRET_B64=')
           if (-not $line) { throw "Falta JWT_SECRET_B64 en .env" }
