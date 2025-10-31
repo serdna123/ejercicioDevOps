@@ -8,14 +8,30 @@ on:
   workflow_dispatch: {}   
 
 jobs:
+  build-test:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: actions/setup-java@v4
+          with:
+            distribution: temurin
+            java-version: '21'
+        - name: Cache Maven
+          uses: actions/cache@v4
+          with:
+            path: ~/.m2/repository
+            key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+        - name: Build + Test 
+          run: mvn -B clean verify
+
   build-image:
     needs: build-test
     runs-on: ubuntu-latest
-    permissions: { contents: read, packages: write }
+    permissions:
+      contents: read
+      packages: write
     env:
       IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/devops-exercise
-    outputs:
-      image_tag: ${{ steps.meta.outputs.IMAGE_TAG }}   # <-- define output del job
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -24,7 +40,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.DEVOPS_PWD }}
       - name: Build & Push
         uses: docker/build-push-action@v6
         with:
@@ -38,7 +54,6 @@ jobs:
       - name: Set IMAGE_TAG output
         id: meta
         run: echo "IMAGE_TAG=${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
-
 
   deploy:
     needs: build-image        # o build-test si no haces imagen
