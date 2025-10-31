@@ -1,0 +1,12 @@
+﻿{
+  "repositoryName": "serdna123/ejercicioDevOps",
+  "pipelineDirectory": "ejercicioDevOps",
+  "workspaceDirectory": "ejercicioDevOps\\ejercicioDevOps",
+  "repositories": {
+    "serdna123/ejercicioDevOps": {
+      "repositoryPath": "ejercicioDevOps\\ejercicioDevOps",
+      "lastRunOn": "10/30/2025 23:20:55 -05:00"
+    }
+  },
+  "lastRunOn": "10/30/2025 23:20:55 -05:00"
+}
