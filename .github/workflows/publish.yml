@@ -23,9 +23,20 @@ jobs:
           key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
       - name: Build + Test
         run: mvn -B clean verify
-      - name: Static Analysis
-        run: ./mvnw -B checkstyle:check com.github.spotbugs:spotbugs-maven-plugin:check
 
+      - name: Grant execute permission for mvnw
+        run: |
+          git update-index --chmod=+x mvnw || true
+          chmod +x mvnw
+
+      - name: Build + Test
+        run: |
+          if [ -x ./mvnw ]; then ./mvnw -B clean verify; else mvn -B clean verify; fi
+
+      - name: Static Analysis
+        run: |
+          if [ -x ./mvnw ]; then ./mvnw -B checkstyle:check com.github.spotbugs:spotbugs-maven-plugin:check; \
+          else mvn -B checkstyle:check com.github.spotbugs:spotbugs-maven-plugin:check; fi
 
   build-image:
     needs: build-test
