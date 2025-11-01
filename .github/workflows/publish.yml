@@ -74,59 +74,53 @@ jobs:
   deploy:
     needs: build-image
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, podman]   # usa tu etiqueta
+    timeout-minutes: 20
     env:
       IMAGE_TAG: ${{ needs.build-image.outputs.image_tag }}
+    defaults:
+      run:
+        shell: powershell
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0    
+          fetch-depth: 0
           clean: true
           ref: main
 
       - name: Escribir .env
-        shell: powershell
         run: |
           "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
-          "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env   
+          "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env
 
-      - name: Desplegar (detectar compose nativo o python)
-        shell: powershell
+      - name: Desplegar (podman compose con fallback)
         run: |
           $podman = "C:\Program Files\RedHat\Podman\podman.exe"
           $ErrorActionPreference = 'Stop'
-
           Push-Location $env:GITHUB_WORKSPACE
 
-       
-          & $podman info | Out-Null
+          & $podman info   | Out-Null
           & $podman pull $env:IMAGE_TAG
 
-         
           $useNative = $true
           try { & $podman compose version | Out-Null } catch { $useNative = $false }
 
           if ($useNative) {
-            # ---- RUTA NATIVA ---- (sin --ansi)
-            & $podman compose -f .\docker-compose.yml down
-            if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
+            # Plugin nativo (evita flags raros)
+            & $podman compose -f .\docker-compose.yml down; if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
             & $podman compose -f .\docker-compose.yml up -d
           } else {
-            # ---- RUTA PYTHON ---- (podman-compose.exe con --no-ansi)
-            $pc = (where.exe podman-compose 2>$null | Select-Object -First 1)
-            if (-not $pc) {
-              $py   = "C:\Python311\python.exe"
-              $venv = "$env:RUNNER_TEMP\venv"
-              $env:PYTHONUNBUFFERED = "1"
-              & $py -m venv $venv
-              & "$venv\Scripts\python.exe" -m pip install --upgrade pip podman-compose
-              $pc = "$venv\Scripts\podman-compose.exe"
-            }
-            & $pc -f .\docker-compose.yml --no-ansi down
+            # Fallback a podman-compose (Python) en venv limpio
+            $py = (Get-Command python -ErrorAction SilentlyContinue)?.Source
+            if (-not $py) { $py = "C:\Python311\python.exe" }
+            $venv = "$env:RUNNER_TEMP\venv"
+            $env:PYTHONUNBUFFERED = "1"
+            & $py -m venv $venv
+            & "$venv\Scripts\python.exe" -m pip install --upgrade pip podman-compose
+            & "$venv\Scripts\podman-compose.exe" -f .\docker-compose.yml --no-ansi down
             if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
-            & $pc -f .\docker-compose.yml --no-ansi up -d
+            & "$venv\Scripts\podman-compose.exe" -f .\docker-compose.yml --no-ansi up -d
           }
 
-          # Ver contenedores
           & $podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           Pop-Location
