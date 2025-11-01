@@ -91,7 +91,7 @@ jobs:
           "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env   
 
       - name: Desplegar con podman compose (detached, sin ANSI)
-        shell: pwsh
+        shell: powershell
         timeout-minutes: 10
         run: |
           $podman = "C:\Program Files\RedHat\Podman\podman.exe"
