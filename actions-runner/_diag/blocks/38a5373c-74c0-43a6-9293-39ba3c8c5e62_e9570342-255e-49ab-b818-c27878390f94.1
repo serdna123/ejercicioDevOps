@@ -1,0 +1,52 @@
+﻿2025-11-01T05:28:10.5090113Z ##[group]Run $python = "C:\Python311\python.exe"
+2025-11-01T05:28:10.5090585Z [36;1m$python = "C:\Python311\python.exe"[0m
+2025-11-01T05:28:10.5091004Z [36;1m$podman = "C:\Program Files\RedHat\Podman\podman.exe"[0m
+2025-11-01T05:28:10.5091405Z [36;1m$moddir = "$env:RUNNER_TEMP\pdc"[0m
+2025-11-01T05:28:10.5091687Z [36;1m[0m
+2025-11-01T05:28:10.5091943Z [36;1m& $python -m pip install --upgrade pip[0m
+2025-11-01T05:28:10.5092373Z [36;1mif ($LASTEXITCODE -ne 0) { throw "pip upgrade failed" }[0m
+2025-11-01T05:28:10.5092735Z [36;1m[0m
+2025-11-01T05:28:10.5093002Z [36;1m& $python -m pip install podman-compose -t $moddir[0m
+2025-11-01T05:28:10.5093513Z [36;1mif ($LASTEXITCODE -ne 0) { throw "pip install podman-compose failed" }[0m
+2025-11-01T05:28:10.5093925Z [36;1m[0m
+2025-11-01T05:28:10.5094119Z [36;1m$env:PYTHONPATH = $moddir[0m
+2025-11-01T05:28:10.5094381Z [36;1m[0m
+2025-11-01T05:28:10.5094600Z [36;1m& $python -m podman_compose --version[0m
+2025-11-01T05:28:10.5094904Z [36;1m[0m
+2025-11-01T05:28:10.5095157Z [36;1m# Pull de la imagen versionada GHCR[0m
+2025-11-01T05:28:10.5095480Z [36;1m& $podman pull $env:IMAGE_TAG[0m
+2025-11-01T05:28:10.5095874Z [36;1mif ($LASTEXITCODE -ne 0) { throw "podman pull failed" }[0m
+2025-11-01T05:28:10.5096238Z [36;1m[0m
+2025-11-01T05:28:10.5096412Z [36;1m# DOWN[0m
+2025-11-01T05:28:10.5096931Z [36;1m& $python -m podman_compose down[0m
+2025-11-01T05:28:10.5097391Z [36;1mif ($LASTEXITCODE -ne 0) { Write-Host "no stack to stop"; $LASTEXITCODE = 0 }[0m
+2025-11-01T05:28:10.5097832Z [36;1m[0m
+2025-11-01T05:28:10.5097997Z [36;1m# UP [0m
+2025-11-01T05:28:10.5098239Z [36;1m& $python -m podman_compose up -d[0m
+2025-11-01T05:28:10.5098649Z [36;1mif ($LASTEXITCODE -ne 0) { throw "compose up failed" }[0m
+2025-11-01T05:28:10.5099009Z [36;1m[0m
+2025-11-01T05:28:10.5099201Z [36;1m# Ver contenedores[0m
+2025-11-01T05:28:10.5099459Z [36;1m& $podman ps[0m
+2025-11-01T05:28:10.5144130Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2025-11-01T05:28:10.5144644Z env:
+2025-11-01T05:28:10.5145038Z   IMAGE_TAG: ghcr.io/serdna123/devops-exercise:e14b146d4c233436a90384f628ffbae8f2cc3497
+2025-11-01T05:28:10.5145504Z ##[endgroup]
+2025-11-01T05:28:11.5289353Z WARNING: Ignoring invalid distribution ~ (C:\Python311\Lib\site-packages)
+2025-11-01T05:28:11.5291825Z WARNING: Ignoring invalid distribution ~ip (C:\Python311\Lib\site-packages)
+2025-11-01T05:28:11.5301083Z Requirement already satisfied: pip in c:\python311\lib\site-packages (25.3)
+2025-11-01T05:28:11.7168624Z WARNING: Ignoring invalid distribution ~ (C:\Python311\Lib\site-packages)
+2025-11-01T05:28:11.7170343Z WARNING: Ignoring invalid distribution ~ip (C:\Python311\Lib\site-packages)
+2025-11-01T05:28:11.7193206Z WARNING: Ignoring invalid distribution ~ (C:\Python311\Lib\site-packages)
+2025-11-01T05:28:11.7196433Z WARNING: Ignoring invalid distribution ~ip (C:\Python311\Lib\site-packages)
+2025-11-01T05:28:12.6572251Z Collecting podman-compose
+2025-11-01T05:28:12.6605986Z   Using cached podman_compose-1.5.0-py3-none-any.whl.metadata (5.6 kB)
+2025-11-01T05:28:12.7116657Z Collecting python-dotenv (from podman-compose)
+2025-11-01T05:28:12.7149584Z   Using cached python_dotenv-1.2.1-py3-none-any.whl.metadata (25 kB)
+2025-11-01T05:28:12.8457290Z Collecting pyyaml (from podman-compose)
+2025-11-01T05:28:12.8489973Z   Using cached pyyaml-6.0.3-cp311-cp311-win_amd64.whl.metadata (2.4 kB)
+2025-11-01T05:28:12.8730062Z Using cached podman_compose-1.5.0-py3-none-any.whl (47 kB)
+2025-11-01T05:28:12.8763117Z Using cached python_dotenv-1.2.1-py3-none-any.whl (21 kB)
+2025-11-01T05:28:12.8798675Z Using cached pyyaml-6.0.3-cp311-cp311-win_amd64.whl (158 kB)
+2025-11-01T05:28:13.0167529Z WARNING: Ignoring invalid distribution ~ (C:\Python311\Lib\site-packages)
+2025-11-01T05:28:13.0170230Z WARNING: Ignoring invalid distribution ~ip (C:\Python311\Lib\site-packages)
+2025-11-01T05:28:13.0242652Z Installing collected packages
