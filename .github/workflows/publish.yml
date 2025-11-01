@@ -16,6 +16,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+          fetch-depth: 0
+          clean: true
       - name: Cache Maven
         uses: actions/cache@v4
         with:

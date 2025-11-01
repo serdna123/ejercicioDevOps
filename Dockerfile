@@ -8,8 +8,6 @@ RUN mvn -q -DskipTests package
 
 # Runtime
 FROM eclipse-temurin:21-jre-jammy
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0"
-ENV JWT_SECRET=dev-secret-change-me
 WORKDIR /app
 COPY --from=build /app/target/*.jar /app/app.jar
 EXPOSE 8080
