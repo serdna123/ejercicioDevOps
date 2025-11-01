@@ -23,6 +23,9 @@ jobs:
           key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
       - name: Build + Test
         run: mvn -B clean verify
+      - name: Static Analysis
+        run: ./mvnw -B checkstyle:check com.github.spotbugs:spotbugs-maven-plugin:check
+
 
   build-image:
     needs: build-test
