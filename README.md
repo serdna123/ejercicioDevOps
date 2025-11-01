@@ -150,4 +150,3 @@ Los reportes se generan automáticamente en:
 target/site/jacoco/index.html
 target/site/spotbugs.html
 target/site/checkstyle.html
-
