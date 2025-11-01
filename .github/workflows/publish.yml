@@ -90,27 +90,24 @@ jobs:
           "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
           "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env   
 
-      - name: Desplegar con podman
-        shell: powershell
+      - name: Desplegar con podman compose (detached, sin ANSI)
+        shell: pwsh
+        timeout-minutes: 10
         run: |
-          $python  = "C:\Python311\python.exe"
-          $podman  = "C:\Program Files\RedHat\Podman\podman.exe"
-          $moddir  = "$env:RUNNER_TEMP\pdc"
+          $podman = "C:\Program Files\RedHat\Podman\podman.exe"
+          $ErrorActionPreference = 'Stop'
+          # Asegura que la VM/servicio esté arriba (si aplica)
+          & $podman info | Out-Null
 
-          & $python -m pip install --upgrade pip
-          & $python -m pip install podman-compose -t $moddir
-          $env:PYTHONPATH = $moddir
-
-          & $python -m podman_compose --version
-
-          # Pull de la imagen versionada GHCR
+          # Pull explícito (para fallar rápido si hay problema de red)
           & $podman pull $env:IMAGE_TAG
 
-          # DOWN (ignorar error si no existe)
-          & $python -m podman_compose down; if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
+          # Down sin bloquear si no existe
+          & $podman compose --ansi never down; if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
 
-          # UP en detached
-          & $python -m podman_compose up -d
+          # Up DETACHED y sin ANSI para evitar colgues en PowerShell
+          & $podman compose --ansi never up -d
 
-          # Ver contenedores
-          & $podman ps
+          # Listar contenedores y salir
+          & $podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          Write-Host "Deploy step finished OK"
