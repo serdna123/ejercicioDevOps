@@ -90,34 +90,66 @@ jobs:
           "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
           "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env   
 
-      - name: Desplegar (podman compose con fallback)
+      - name: Desplegar (compose con fallback, compatible con PowerShell 5)
+        shell: powershell
         run: |
           $podman = "C:\Program Files\RedHat\Podman\podman.exe"
           $ErrorActionPreference = 'Stop'
           Push-Location $env:GITHUB_WORKSPACE
 
-          & $podman info   | Out-Null
+          # Asegura Podman OK y pull explícito
+          & $podman info | Out-Null
           & $podman pull $env:IMAGE_TAG
 
+          # ¿Existe plugin nativo 'podman compose'?
           $useNative = $true
           try { & $podman compose version | Out-Null } catch { $useNative = $false }
 
           if ($useNative) {
-            # Plugin nativo (evita flags raros)
-            & $podman compose -f .\docker-compose.yml down; if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
+            # ---- RUTA NATIVA ----
+            & $podman compose -f .\docker-compose.yml down
+            if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
             & $podman compose -f .\docker-compose.yml up -d
           } else {
-            # Fallback a podman-compose (Python) en venv limpio
-            $py = (Get-Command python -ErrorAction SilentlyContinue)?.Source
-            if (-not $py) { $py = "C:\Python311\python.exe" }
+            # ---- RUTA PYTHON ---- (sin usar ?. )
+            $pyCmd = Get-Command python -ErrorAction SilentlyContinue
+            if ($pyCmd) { $py = $pyCmd.Source } else { $py = "C:\Python311\python.exe" }
+
             $venv = "$env:RUNNER_TEMP\venv"
             $env:PYTHONUNBUFFERED = "1"
+
             & $py -m venv $venv
             & "$venv\Scripts\python.exe" -m pip install --upgrade pip podman-compose
-            & "$venv\Scripts\podman-compose.exe" -f .\docker-compose.yml --no-ansi down
+
+            $pc = "$venv\Scripts\podman-compose.exe"
+
+            & $pc -f .\docker-compose.yml --no-ansi down
             if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
-            & "$venv\Scripts\podman-compose.exe" -f .\docker-compose.yml --no-ansi up -d
+            & $pc -f .\docker-compose.yml --no-ansi up -d
           }
 
+          Start-Sleep -Seconds 3
+
+          Write-Host "=== PODMAN COMPOSE LS ==="
+          & $podman compose ls
+
+          Write-Host "=== PODMAN PS (RUNNING) ==="
           & $podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+          Write-Host "=== PODMAN PS -A (INCLUIDOS EXITED) ==="
+          & $podman ps -a --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}"
+
+          # Si algo salió en Exited, muestra logs y falla
+          $exited = & $podman ps -a --format "{{.Names}} {{.Status}}" | Select-String "Exited"
+          if ($exited) {
+            Write-Host "=== LOGS DE SERVICIOS (tail=200) ==="
+            $names = @()
+            foreach ($line in $exited) { $names += ($line.ToString().Split()[0]) }
+            foreach ($n in $names) {
+              Write-Host "--- LOGS: $n ---"
+              & $podman logs --tail=200 $n
+            }
+            throw "Algunos servicios salieron con 'Exited'"
+          }
+
           Pop-Location
