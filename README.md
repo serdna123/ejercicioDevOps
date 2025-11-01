@@ -97,14 +97,11 @@ for i in {1..10}; do
   http://localhost:8080/DevOps;
 done
 
-
-
 🧪 Pruebas automáticas
 
 El proyecto usa JUnit + SpringBootTest y se ejecutan automáticamente al construir:
 
 ./mvnw clean verify
-
 
 Esto incluye:
 
@@ -132,30 +129,19 @@ DEVOPS_PWD	Repository → Settings → Secrets → Actions	Token de acceso a GHC
 JWT_SECRET_B64	Secrets	Clave base64 para firmar JWT
 Runner self-hosted
 
-Si ves el error:
+Para solventar el error:
+"Waiting for a runner to pick up this job..."
 
-Waiting for a runner to pick up this job...
-
-
-Significa que tu runner no está en ejecución.
+Significa que el runner no está en ejecución.
 
 Solución:
 
 Abrir PowerShell y navega al directorio del runner:
-
-ejemplo: 
-cd D:\Eclipse\devopsExercise\actions-runner
+en mi caso: 
+cd .\devopsExercise\actions-runner
 .\run.cmd
 
-
-Déjalo abierto mientras se ejecuta el job deploy.
-
-🔍 Troubleshooting CI/CD
-Error	Causa	Solución
-Permission denied ./mvnw	El wrapper no es ejecutable	git update-index --chmod=+x mvnw
-exit code 128 / submodule mapping	Rastro del runner en el repo	git rm -r --cached actions-runner
-SecretsUsedInArgOrEnv	Usar ENV JWT_SECRET en Dockerfile	Mover a .env
-pwsh: command not found	Usar shell: bash en vez de PowerShell en Linux jobs	Definir shell: bash
+mantenerlo abierto mientras se ejecuta el job deploy.
 
 📊 Cobertura y calidad de código
 
