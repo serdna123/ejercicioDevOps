@@ -90,18 +90,18 @@ jobs:
           "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
           "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env   
 
-      - name: Desplegar (compose con fallback, compatible con PowerShell 5)
+      - name: Desplegar 
         shell: powershell
         run: |
           $podman = "C:\Program Files\RedHat\Podman\podman.exe"
           $ErrorActionPreference = 'Stop'
           Push-Location $env:GITHUB_WORKSPACE
 
-          # Asegura Podman OK y pull explícito
+          
           & $podman info | Out-Null
           & $podman pull $env:IMAGE_TAG
 
-          # ¿Existe plugin nativo 'podman compose'?
+          # podman instalado
           $useNative = $true
           try { & $podman compose version | Out-Null } catch { $useNative = $false }
 
@@ -139,7 +139,7 @@ jobs:
           Write-Host "=== PODMAN PS -A (INCLUIDOS EXITED) ==="
           & $podman ps -a --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}"
 
-          # Si algo salió en Exited, muestra logs y falla
+         
           $exited = & $podman ps -a --format "{{.Names}} {{.Status}}" | Select-String "Exited"
           if ($exited) {
             Write-Host "=== LOGS DE SERVICIOS (tail=200) ==="
