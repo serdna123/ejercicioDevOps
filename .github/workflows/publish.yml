@@ -90,24 +90,43 @@ jobs:
           "JWT_SECRET_B64=${{ secrets.JWT_SECRET_B64 }}" | Out-File -Encoding ASCII .env
           "IMAGE_TAG=${{ env.IMAGE_TAG }}" | Out-File -Encoding ASCII -Append .env   
 
-      - name: Desplegar con podman compose (detached, sin ANSI)
+      - name: Desplegar (detectar compose nativo o python)
         shell: powershell
-        timeout-minutes: 10
         run: |
           $podman = "C:\Program Files\RedHat\Podman\podman.exe"
           $ErrorActionPreference = 'Stop'
-          # Asegura que la VM/servicio esté arriba (si aplica)
-          & $podman info | Out-Null
 
-          # Pull explícito (para fallar rápido si hay problema de red)
+          Push-Location $env:GITHUB_WORKSPACE
+
+       
+          & $podman info | Out-Null
           & $podman pull $env:IMAGE_TAG
 
-          # Down sin bloquear si no existe
-          & $podman compose --ansi never down; if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
+         
+          $useNative = $true
+          try { & $podman compose version | Out-Null } catch { $useNative = $false }
 
-          # Up DETACHED y sin ANSI para evitar colgues en PowerShell
-          & $podman compose --ansi never up -d
+          if ($useNative) {
+            # ---- RUTA NATIVA ---- (sin --ansi)
+            & $podman compose -f .\docker-compose.yml down
+            if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
+            & $podman compose -f .\docker-compose.yml up -d
+          } else {
+            # ---- RUTA PYTHON ---- (podman-compose.exe con --no-ansi)
+            $pc = (where.exe podman-compose 2>$null | Select-Object -First 1)
+            if (-not $pc) {
+              $py   = "C:\Python311\python.exe"
+              $venv = "$env:RUNNER_TEMP\venv"
+              $env:PYTHONUNBUFFERED = "1"
+              & $py -m venv $venv
+              & "$venv\Scripts\python.exe" -m pip install --upgrade pip podman-compose
+              $pc = "$venv\Scripts\podman-compose.exe"
+            }
+            & $pc -f .\docker-compose.yml --no-ansi down
+            if ($LASTEXITCODE -ne 0) { $LASTEXITCODE = 0 }
+            & $pc -f .\docker-compose.yml --no-ansi up -d
+          }
 
-          # Listar contenedores y salir
+          # Ver contenedores
           & $podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          Write-Host "Deploy step finished OK"
+          Pop-Location
